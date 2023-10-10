@@ -42,8 +42,15 @@ namespace surface {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> h0(mesh.nVertices(), mesh.nVertices());
+    std::vector<Eigen::Triplet<double>> entries;
+    for (Vertex v : mesh.vertices()) {
+        size_t idx = vertexIndices[v];
+        entries.push_back(
+            Eigen::Triplet<double>(static_cast<double>(idx), static_cast<double>(idx), barycentricDualArea(v)));
+    }
+    h0.setFromTriplets(entries.cbegin(), entries.cend());
+    return h0;
 }
 
 /*
@@ -54,8 +61,15 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> h1(mesh.nEdges(), mesh.nEdges());
+    std::vector<Eigen::Triplet<double>> entries;
+    for (Edge e : mesh.edges()) {
+        double idx = static_cast<double>(edgeIndices[e]);
+        entries.push_back(
+            Eigen::Triplet<double>(idx, idx, edgeCotanWeight(e)));
+    }
+    h1.setFromTriplets(entries.cbegin(), entries.cend());
+    return h1;
 }
 
 /*
@@ -66,8 +80,15 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> h2(mesh.nFaces(), mesh.nFaces());
+    std::vector<Eigen::Triplet<double>> entries;
+    for (Face f : mesh.faces()) {
+        double idx = static_cast<double>(faceIndices[f]);
+        entries.push_back(
+            Eigen::Triplet<double>(idx, idx, 1.0 / faceArea(f)));
+    }
+    h2.setFromTriplets(entries.cbegin(), entries.cend());
+    return h2;
 }
 
 /*
@@ -78,8 +99,17 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
  */
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> signedAdj(mesh.nEdges(), mesh.nVertices());
+    std::vector<Eigen::Triplet<double>> entries;
+
+    for (Edge e : mesh.edges()) {
+        double edgeIdx = static_cast<double>(edgeIndices[e]);
+        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(vertexIndices[e.firstVertex()]), -1.0));
+        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(vertexIndices[e.secondVertex()]), 1.0));
+    }
+
+    signedAdj.setFromTriplets(entries.cbegin(), entries.cend());
+    return signedAdj;
 }
 
 /*
@@ -90,8 +120,21 @@ SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() cons
  */
 SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative1Form() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> signedAdj(mesh.nFaces(), mesh.nEdges());
+    std::vector<Eigen::Triplet<double>> entries;
+
+    for (Face f : mesh.faces()) {
+        double faceIdx = static_cast<double>(faceIndices[f]);
+        Halfedge he = f.halfedge();
+        for (auto i = 0u; i < 3; i++) {
+            double orientation = he.tailVertex() == he.edge().firstVertex() ? 1.0 : -1.0;
+            entries.push_back(Eigen::Triplet<double>(faceIdx, static_cast<double>(edgeIndices[he.edge()]), orientation));
+            he = he.next();
+        }
+    }
+
+    signedAdj.setFromTriplets(entries.cbegin(), entries.cend());
+    return signedAdj;
 }
 
 } // namespace surface

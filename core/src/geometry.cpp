@@ -32,6 +32,8 @@
 #include "geometrycentral/surface/vertex_position_geometry.h"
 #include <complex>
 
+using namespace std::complex_literals;
+
 namespace geometrycentral {
 namespace surface {
 
@@ -79,9 +81,20 @@ double VertexPositionGeometry::totalArea() const {
  * Returns: The cotan of the angle opposite the given halfedge.
  */
 double VertexPositionGeometry::cotan(Halfedge he) const {
+    size_t v1 = he.tipVertex().getIndex();
+    size_t v2 = he.tailVertex().getIndex();
 
-    // TODO
-    return 0; // placeholder
+    size_t v3 = he.next().tipVertex().getIndex();
+
+    auto u = vertexPositions[v1] - vertexPositions[v3];
+    auto v = vertexPositions[v2] - vertexPositions[v3];
+
+    double denominator = cross(u, v).norm();
+
+    return dot(u, v) / denominator;
+
+    //Default method
+    //return 2.0 * halfedgeCotanWeight(he);      
 }
 
 /*
@@ -90,10 +103,15 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
  * Input: The vertex whose barycentric dual area is to be computed.
  * Returns: The barycentric dual area of the given vertex.
  */
-double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
 
-    // TODO
-    return 0; // placeholder
+//In case we have not yet covered it in class, 
+//the barycentric dual area associated with a vertex is equal to one-third the area of all triangles ijk touching i.
+double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
+    double area = 0.0;
+    for (Face f : v.adjacentFaces()) {
+        if (!f.isBoundaryLoop()) area += faceArea(f);
+    }
+    return area / 3;
 }
 
 /*
@@ -105,8 +123,15 @@ double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
  */
 double VertexPositionGeometry::angle(Corner c) const {
 
-    // TODO
-    return 0; // placeholder
+    auto o = c.vertex();
+    auto p = c.halfedge().tipVertex();
+    auto q = c.halfedge().next().tipVertex();
+
+    auto v = vertexPositions[p] - vertexPositions[o];
+    auto w = vertexPositions[q] - vertexPositions[o];
+
+
+    return clamp(acos(dot(v, w) / (v.norm() * w.norm())), 0.0, PI);
 }
 
 /*
@@ -117,8 +142,11 @@ double VertexPositionGeometry::angle(Corner c) const {
  */
 double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
 
-    // TODO
-    return 0; // placeholder
+    auto n1 = faceNormals[he.face()];
+    auto n2 = faceNormals[he.twin().face()];
+    auto v = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()];
+
+    return atan2(dot(v.normalize(), cross(n1, n2)), dot(n1, n2));
 }
 
 /*
@@ -129,8 +157,13 @@ double VertexPositionGeometry::dihedralAngle(Halfedge he) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalEquallyWeighted(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto n = Vector3::zero();
+
+    for (const auto& f : v.adjacentFaces()) {
+        n += faceNormals[f.getIndex()];
+    }
+
+    return n.normalize();
 }
 
 /*
@@ -141,8 +174,12 @@ Vector3 VertexPositionGeometry::vertexNormalEquallyWeighted(Vertex v) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalAngleWeighted(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto n = Vector3::zero();
+    for (const auto& c : v.adjacentCorners()) {
+        n += angle(c) * faceNormals[c.face()];
+    }
+    return n.normalize();
+
 }
 
 /*
@@ -153,8 +190,18 @@ Vector3 VertexPositionGeometry::vertexNormalAngleWeighted(Vertex v) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalSphereInscribed(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto first = v.halfedge();
+    auto left = first;
+    auto right = left.twin().next();
+    auto n = Vector3::zero();
+    do {
+        auto v = vertexPositions[right.tipVertex()] - vertexPositions[right.tailVertex()];
+        auto w = vertexPositions[left.tipVertex()] - vertexPositions[left.tailVertex()];
+        n += cross(v, w) / (v.norm2() * w.norm2());
+        left = right;
+        right = right.twin().next();
+    } while (left != first);
+    return n.normalize();
 }
 
 /*
@@ -165,8 +212,11 @@ Vector3 VertexPositionGeometry::vertexNormalSphereInscribed(Vertex v) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalAreaWeighted(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto n = Vector3::zero();
+    for (auto const& f : v.adjacentFaces()) {
+        n += faceAreas[f] * faceNormals[f];
+    }
+    return n.normalize();
 }
 
 /*
@@ -177,8 +227,12 @@ Vector3 VertexPositionGeometry::vertexNormalAreaWeighted(Vertex v) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalGaussianCurvature(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto n = Vector3::zero();
+    for (auto const& he : v.outgoingHalfedges()) {
+        auto u = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()];
+        n += dihedralAngle(he) * u.normalize();
+    }
+    return n.normalize();
 }
 
 /*
@@ -189,8 +243,12 @@ Vector3 VertexPositionGeometry::vertexNormalGaussianCurvature(Vertex v) const {
  */
 Vector3 VertexPositionGeometry::vertexNormalMeanCurvature(Vertex v) const {
 
-    // TODO
-    return {0, 0, 0}; // placeholder
+    auto n = Vector3::zero();
+    for (auto const& he : v.outgoingHalfedges()) {
+        auto u = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()];
+        n += edgeCotanWeights[he.edge()] * u;
+    }
+    return n.normalize();
 }
 
 /*
@@ -201,8 +259,11 @@ Vector3 VertexPositionGeometry::vertexNormalMeanCurvature(Vertex v) const {
  */
 double VertexPositionGeometry::angleDefect(Vertex v) const {
 
-    // TODO
-    return 0; // placeholder
+    double angleSum = 0.0;
+    for (auto const& c : v.adjacentCorners()) {
+        angleSum += angle(c);
+    }
+    return 2 * PI - angleSum;
 }
 
 /*
@@ -213,8 +274,11 @@ double VertexPositionGeometry::angleDefect(Vertex v) const {
  */
 double VertexPositionGeometry::totalAngleDefect() const {
 
-    // TODO
-    return 0; // placeholder
+    double defectSum = 0.0;
+    for (auto const& v : mesh.vertices()) {
+        defectSum += angleDefect(v);
+    }
+    return defectSum;
 }
 
 /*
@@ -224,9 +288,13 @@ double VertexPositionGeometry::totalAngleDefect() const {
  * Returns: The mean curvature at the given vertex.
  */
 double VertexPositionGeometry::scalarMeanCurvature(Vertex v) const {
-
-    // TODO
-    return 0; // placeholder
+    
+    double sum = 0.0;
+    for (auto const& he : v.outgoingHalfedges()) {
+        auto u = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()]; 
+        sum += dihedralAngle(he) * u.norm();
+    }
+    return sum / 2;
 }
 
 /*
@@ -237,8 +305,18 @@ double VertexPositionGeometry::scalarMeanCurvature(Vertex v) const {
  */
 double VertexPositionGeometry::circumcentricDualArea(Vertex v) const {
 
-    // TODO
-    return 0; // placeholder
+    auto first = v.halfedge();
+    auto left = first;
+    auto right = left.twin().next();
+    double area = 0.0;
+    do {
+        auto v = vertexPositions[right.tipVertex()] - vertexPositions[right.tailVertex()];
+        auto w = vertexPositions[left.tipVertex()] - vertexPositions[left.tailVertex()];
+        area += halfedgeCotanWeight(left.twin()) * w.norm2() + halfedgeCotanWeight(right) * v.norm2();
+        left = right;
+        right = right.twin().next();
+    } while (left != first);
+    return area / 4;
 }
 
 /*
@@ -249,8 +327,12 @@ double VertexPositionGeometry::circumcentricDualArea(Vertex v) const {
  */
 std::pair<double, double> VertexPositionGeometry::principalCurvatures(Vertex v) const {
 
-    // TODO
-    return std::make_pair(0, 0); // placeholder
+    auto K = angleDefect(v) / circumcentricDualArea(v);
+    auto H = scalarMeanCurvature(v) / circumcentricDualArea(v);
+    auto k2 = H + sqrt(H * H - K);
+    auto k1 = H - sqrt(H * H - K);
+    if (k1 > k2) std::swap(k1, k2);
+    return std::make_pair(k1, k2); // placeholder
 }
 
 
@@ -263,10 +345,25 @@ std::pair<double, double> VertexPositionGeometry::principalCurvatures(Vertex v) 
  */
 SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
-}
+    SparseMatrix<double> laplace(mesh.nVertices(), mesh.nVertices());
+    std::vector<Eigen::Triplet<double>> entries;
 
+    // row i represents the image of vertex i
+    for (Vertex v : mesh.vertices()) {
+        double cum = 0.0;
+        for (Halfedge he : v.outgoingHalfedges()) {
+            cum += edgeCotanWeight(he.edge());
+            entries.push_back(Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]),
+                                                     static_cast<double>(vertexIndices[he.tipVertex()]),
+                                                     - edgeCotanWeight(he.edge())));
+        }
+        entries.push_back(
+            Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]), static_cast<double>(vertexIndices[v]), cum + 1e-8));
+    }
+    laplace.setFromTriplets(entries.cbegin(), entries.cend());
+
+    return laplace;
+}
 /*
  * Builds the sparse diagonal mass matrix containing the barycentric dual area of each vertex.
  *
@@ -275,8 +372,14 @@ SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
  */
 SparseMatrix<double> VertexPositionGeometry::massMatrix() const {
 
-    // TODO
-    return identityMatrix<double>(1); // placeholder
+    SparseMatrix<double> mass(mesh.nVertices(), mesh.nVertices());
+    std::vector<Eigen::Triplet<double>> entries;
+    for (Vertex v : mesh.vertices()) {
+        entries.push_back(
+            Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]), static_cast<double>(vertexIndices[v]), barycentricDualArea(v)));
+    }
+    mass.setFromTriplets(entries.cbegin(), entries.cend());
+    return mass;
 }
 
 /*
@@ -288,8 +391,25 @@ SparseMatrix<double> VertexPositionGeometry::massMatrix() const {
  */
 SparseMatrix<std::complex<double>> VertexPositionGeometry::complexLaplaceMatrix() const {
 
-    // TODO
-    return identityMatrix<std::complex<double>>(1); // placeholder
+    SparseMatrix<std::complex<double>> laplace(mesh.nVertices(), mesh.nVertices());
+    std::vector<Eigen::Triplet<std::complex<double>>> entries;
+
+    // row i represents the image of vertex i
+    for (Vertex v : mesh.vertices()) {
+        std::complex<double> cum(0.0,0.0);
+        for (Halfedge he : v.outgoingHalfedges()) {
+            cum += edgeCotanWeight(he.edge());
+            entries.push_back(Eigen::Triplet<std::complex<double>>(
+                static_cast<double>(vertexIndices[v]),
+                static_cast<double>(vertexIndices[he.tipVertex()]), -edgeCotanWeight(he.edge())));
+        }
+        entries.push_back(Eigen::Triplet<std::complex<double>>(static_cast<double>(vertexIndices[v]),
+                                                               static_cast<double>(vertexIndices[v]),
+                                                               cum + 1e-8));
+    }
+    laplace.setFromTriplets(entries.cbegin(), entries.cend());
+
+    return laplace;
 }
 
 /*
