@@ -1,5 +1,7 @@
 // Implement member functions for HodgeDecomposition class.
 #include "hodge-decomposition.h"
+#include "./solvers.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 /*
  * Constructor
@@ -11,24 +13,24 @@ HodgeDecomposition::HodgeDecomposition(ManifoldSurfaceMesh* inputMesh, VertexPos
     geometry = inputGeo;
 
     // TODO: build DEC operators
-    this->hodge1 = identityMatrix<double>(1); // placeholder
-    this->hodge2 = identityMatrix<double>(1); // placeholder
-    this->d0 = identityMatrix<double>(1);     // placeholder
-    this->d1 = identityMatrix<double>(1);     // placeholder
+    this->hodge1 = geometry->buildHodgeStar1Form();
+    this->hodge2 = geometry->buildHodgeStar2Form();
+    this->d0 = geometry->buildExteriorDerivative0Form();
+    this->d1 = geometry->buildExteriorDerivative1Form();
 
     // TODO: Build operator inverses.
     // Hint: Use the sparseInverseDiagonal() in utils/src/solvers.cpp to invert sparse diagonal matrices.
-    this->hodge1Inv = identityMatrix<double>(1); // placeholder
-    this->hodge2Inv = identityMatrix<double>(1); // placeholder
-    this->d0T = identityMatrix<double>(1);       // placeholder
-    this->d1T = identityMatrix<double>(1);       // placeholder
+    this->hodge1Inv = sparseInverseDiagonal(this->hodge1);
+    this->hodge2Inv = sparseInverseDiagonal(this->hodge2);
+    this->d0T = this->d0.transpose();
+    this->d1T = this->d1.transpose();
 
     // TODO: Construct 0-form Laplace matrix.
     // Shift matrix by a small constant (1e-8) to make it positive definite.
-    this->A = identityMatrix<double>(1); // placeholder
+    this->A = geometry->laplaceMatrix();
 
     // TODO: Construct 2-form matrix.
-    this->B = identityMatrix<double>(1); // placeholder
+    this->B = this->d1 * this->hodge1Inv * this->d1T;
 }
 
 /*
@@ -39,8 +41,10 @@ HodgeDecomposition::HodgeDecomposition(ManifoldSurfaceMesh* inputMesh, VertexPos
  */
 Vector<double> HodgeDecomposition::computeExactComponent(const Vector<double>& omega) const {
 
-    // TODO
-    return Vector<double>::Zero(1); // placeholder
+    Vector<double> rhs = this->d0T * this->hodge1 * omega;
+    auto laplaceMatrix = this->A;
+    Vector<double> alpha = solvePositiveDefinite(laplaceMatrix, rhs);
+    return this->d0 * alpha;
 }
 
 /*
@@ -51,8 +55,10 @@ Vector<double> HodgeDecomposition::computeExactComponent(const Vector<double>& o
  */
 Vector<double> HodgeDecomposition::computeCoExactComponent(const Vector<double>& omega) const {
 
-    // TODO
-    return Vector<double>::Zero(1); // placeholder
+    SparseMatrix<double> twoFormLaplace = this->B;
+    Vector<double> rhs = this->d1 * omega;
+    Vector<double> betaTilde = solveSquare(twoFormLaplace, rhs);
+    return this->hodge1Inv * this->d1T * betaTilde;
 }
 
 /*
@@ -65,6 +71,5 @@ Vector<double> HodgeDecomposition::computeCoExactComponent(const Vector<double>&
 Vector<double> HodgeDecomposition::computeHarmonicComponent(const Vector<double>& omega, const Vector<double>& dAlpha,
                                                             const Vector<double>& deltaBeta) const {
 
-    // TODO
-    return Vector<double>::Zero(1); // placeholder
+    return omega - dAlpha - deltaBeta;
 }

@@ -178,7 +178,7 @@ TEST_F(HarmonicBasesTest, compute) {
         }
     }
     EXPECT_TRUE(closed_success) << "Bases are not closed";
-    EXPECT_TRUE(exact_success) << "Bases are not exact";
+    EXPECT_TRUE(exact_success) << "Bases are not co-closed";
 }
 
 } // namespace

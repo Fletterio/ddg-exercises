@@ -32,8 +32,6 @@
 #include "geometrycentral/surface/vertex_position_geometry.h"
 #include <complex>
 
-using namespace std::complex_literals;
-
 namespace geometrycentral {
 namespace surface {
 
@@ -93,8 +91,8 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
 
     return dot(u, v) / denominator;
 
-    //Default method
-    //return 2.0 * halfedgeCotanWeight(he);      
+    // Default method
+    // return 2.0 * halfedgeCotanWeight(he);
 }
 
 /*
@@ -104,8 +102,8 @@ double VertexPositionGeometry::cotan(Halfedge he) const {
  * Returns: The barycentric dual area of the given vertex.
  */
 
-//In case we have not yet covered it in class, 
-//the barycentric dual area associated with a vertex is equal to one-third the area of all triangles ijk touching i.
+// In case we have not yet covered it in class,
+// the barycentric dual area associated with a vertex is equal to one-third the area of all triangles ijk touching i.
 double VertexPositionGeometry::barycentricDualArea(Vertex v) const {
     double area = 0.0;
     for (Face f : v.adjacentFaces()) {
@@ -179,7 +177,6 @@ Vector3 VertexPositionGeometry::vertexNormalAngleWeighted(Vertex v) const {
         n += angle(c) * faceNormals[c.face()];
     }
     return n.normalize();
-
 }
 
 /*
@@ -288,10 +285,10 @@ double VertexPositionGeometry::totalAngleDefect() const {
  * Returns: The mean curvature at the given vertex.
  */
 double VertexPositionGeometry::scalarMeanCurvature(Vertex v) const {
-    
+
     double sum = 0.0;
     for (auto const& he : v.outgoingHalfedges()) {
-        auto u = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()]; 
+        auto u = vertexPositions[he.tipVertex()] - vertexPositions[he.tailVertex()];
         sum += dihedralAngle(he) * u.norm();
     }
     return sum / 2;
@@ -355,10 +352,10 @@ SparseMatrix<double> VertexPositionGeometry::laplaceMatrix() const {
             cum += edgeCotanWeight(he.edge());
             entries.push_back(Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]),
                                                      static_cast<double>(vertexIndices[he.tipVertex()]),
-                                                     - edgeCotanWeight(he.edge())));
+                                                     -edgeCotanWeight(he.edge())));
         }
-        entries.push_back(
-            Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]), static_cast<double>(vertexIndices[v]), cum + 1e-8));
+        entries.push_back(Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]),
+                                                 static_cast<double>(vertexIndices[v]), cum + 1e-8));
     }
     laplace.setFromTriplets(entries.cbegin(), entries.cend());
 
@@ -375,8 +372,8 @@ SparseMatrix<double> VertexPositionGeometry::massMatrix() const {
     SparseMatrix<double> mass(mesh.nVertices(), mesh.nVertices());
     std::vector<Eigen::Triplet<double>> entries;
     for (Vertex v : mesh.vertices()) {
-        entries.push_back(
-            Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]), static_cast<double>(vertexIndices[v]), barycentricDualArea(v)));
+        entries.push_back(Eigen::Triplet<double>(static_cast<double>(vertexIndices[v]),
+                                                 static_cast<double>(vertexIndices[v]), barycentricDualArea(v)));
     }
     mass.setFromTriplets(entries.cbegin(), entries.cend());
     return mass;
@@ -396,16 +393,15 @@ SparseMatrix<std::complex<double>> VertexPositionGeometry::complexLaplaceMatrix(
 
     // row i represents the image of vertex i
     for (Vertex v : mesh.vertices()) {
-        std::complex<double> cum(0.0,0.0);
+        std::complex<double> cum(0.0, 0.0);
         for (Halfedge he : v.outgoingHalfedges()) {
             cum += edgeCotanWeight(he.edge());
-            entries.push_back(Eigen::Triplet<std::complex<double>>(
-                static_cast<double>(vertexIndices[v]),
-                static_cast<double>(vertexIndices[he.tipVertex()]), -edgeCotanWeight(he.edge())));
+            entries.push_back(Eigen::Triplet<std::complex<double>>(static_cast<double>(vertexIndices[v]),
+                                                                   static_cast<double>(vertexIndices[he.tipVertex()]),
+                                                                   -edgeCotanWeight(he.edge())));
         }
         entries.push_back(Eigen::Triplet<std::complex<double>>(static_cast<double>(vertexIndices[v]),
-                                                               static_cast<double>(vertexIndices[v]),
-                                                               cum + 1e-8));
+                                                               static_cast<double>(vertexIndices[v]), cum + 1e-8));
     }
     laplace.setFromTriplets(entries.cbegin(), entries.cend());
 

@@ -25,6 +25,9 @@ class SimplicialComplexOperatorsTest : public ::testing::Test {
         std::unique_ptr<ManifoldSurfaceMesh> mesh_uptr;
         std::unique_ptr<VertexPositionGeometry> geometry_uptr;
         std::tie(mesh_uptr, geometry_uptr) = readManifoldSurfaceMesh(filepath);
+        if (!mesh_uptr) {
+            std::cerr << "null mesh pointer from loading\n";
+        }
         ManifoldSurfaceMesh* mesh = mesh_uptr.release();
         VertexPositionGeometry* geometry = geometry_uptr.release();
         SCO.initialize(mesh, geometry);

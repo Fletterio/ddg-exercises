@@ -1,5 +1,9 @@
 // Implement member functions for HarmonicBases class.
 #include "harmonic-bases.h"
+#include "solvers.h"
+
+#include "geometrycentral/numerical/linear_solvers.h"
+//-------------------------------------------- Here the actual file begins ----------------------------------------------------
 
 /*
  * Constructor
@@ -19,8 +23,23 @@ HarmonicBases::HarmonicBases(ManifoldSurfaceMesh* inputMesh, VertexPositionGeome
  */
 Vector<double> HarmonicBases::buildClosedPrimalOneForm(const std::vector<Halfedge>& generator) const {
 
-    // TODO
-    return Vector<double>::Zero(1); // placeholder
+    Vector<double> oneForm = Vector<double>::Zero(mesh->nEdges());
+    int sign = 1;
+    Halfedge previous, current;
+    previous = generator[generator.size() - 1];
+    for (auto& he : generator) {
+        current = he;
+        if (previous.tipVertex() == current.tailVertex()) {
+            sign = -sign;
+        }
+        if (he.edge().halfedge() == he) {
+            oneForm[he.edge().getIndex()] = sign;
+        } else {
+            oneForm[he.edge().getIndex()] = -sign;
+        }
+        previous = he;
+    }
+    return oneForm;
 }
 
 /*
@@ -31,8 +50,21 @@ Vector<double> HarmonicBases::buildClosedPrimalOneForm(const std::vector<Halfedg
  */
 std::vector<Vector<double>> HarmonicBases::compute(const std::vector<std::vector<Halfedge>>& generators,
                                                    const HodgeDecomposition& hodgeDecomposition) const {
-
-    // TODO
     std::vector<Vector<double>> gammas;
+    SparseMatrix<double> hodge0, hodge0Inverse(mesh->nVertices(), mesh->nVertices()), diff0, hodge1, codifferential;
+    hodge0 = geometry->buildHodgeStar0Form();
+    hodge0Inverse = sparseInverseDiagonal(hodge0);
+    diff0 = geometry->buildExteriorDerivative0Form();
+    hodge1 = geometry->buildHodgeStar1Form();
+    codifferential = hodge0Inverse * diff0.transpose() * hodge1;
+
+    for (auto& generator : generators) {
+        Vector<double> omega = buildClosedPrimalOneForm(generator);
+        Vector<double> rhs = diff0.transpose() * hodge1 * omega;
+        auto laplaceMatrix = geometry->laplaceMatrix();
+        Vector<double> alpha = solvePositiveDefinite(laplaceMatrix, rhs);
+        Vector<double> gamma = omega - diff0 * alpha;
+        gammas.push_back(gamma);
+    }
     return gammas; // placeholder
 }

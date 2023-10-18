@@ -13,6 +13,7 @@ class TrivialConnections {
   public:
     ManifoldSurfaceMesh* mesh;
     VertexPositionGeometry* geometry;
+    std::vector<std::vector<Halfedge>> generators;
     std::vector<Vector<double>> bases;
     SparseMatrix<double> P;
     SparseMatrix<double> A;

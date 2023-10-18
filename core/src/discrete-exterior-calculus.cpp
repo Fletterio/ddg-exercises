@@ -45,7 +45,7 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar0Form() const {
     SparseMatrix<double> h0(mesh.nVertices(), mesh.nVertices());
     std::vector<Eigen::Triplet<double>> entries;
     for (Vertex v : mesh.vertices()) {
-        size_t idx = vertexIndices[v];
+        size_t idx = v.getIndex();
         entries.push_back(
             Eigen::Triplet<double>(static_cast<double>(idx), static_cast<double>(idx), barycentricDualArea(v)));
     }
@@ -64,9 +64,8 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar1Form() const {
     SparseMatrix<double> h1(mesh.nEdges(), mesh.nEdges());
     std::vector<Eigen::Triplet<double>> entries;
     for (Edge e : mesh.edges()) {
-        double idx = static_cast<double>(edgeIndices[e]);
-        entries.push_back(
-            Eigen::Triplet<double>(idx, idx, edgeCotanWeight(e)));
+        double idx = static_cast<double>(e.getIndex());
+        entries.push_back(Eigen::Triplet<double>(idx, idx, edgeCotanWeight(e)));
     }
     h1.setFromTriplets(entries.cbegin(), entries.cend());
     return h1;
@@ -83,9 +82,8 @@ SparseMatrix<double> VertexPositionGeometry::buildHodgeStar2Form() const {
     SparseMatrix<double> h2(mesh.nFaces(), mesh.nFaces());
     std::vector<Eigen::Triplet<double>> entries;
     for (Face f : mesh.faces()) {
-        double idx = static_cast<double>(faceIndices[f]);
-        entries.push_back(
-            Eigen::Triplet<double>(idx, idx, 1.0 / faceArea(f)));
+        double idx = static_cast<double>(f.getIndex());
+        entries.push_back(Eigen::Triplet<double>(idx, idx, 1.0 / faceArea(f)));
     }
     h2.setFromTriplets(entries.cbegin(), entries.cend());
     return h2;
@@ -103,9 +101,9 @@ SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative0Form() cons
     std::vector<Eigen::Triplet<double>> entries;
 
     for (Edge e : mesh.edges()) {
-        double edgeIdx = static_cast<double>(edgeIndices[e]);
-        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(vertexIndices[e.firstVertex()]), -1.0));
-        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(vertexIndices[e.secondVertex()]), 1.0));
+        double edgeIdx = static_cast<double>(e.getIndex());
+        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(e.firstVertex().getIndex()), -1.0));
+        entries.push_back(Eigen::Triplet<double>(edgeIdx, static_cast<double>(e.secondVertex().getIndex()), 1.0));
     }
 
     signedAdj.setFromTriplets(entries.cbegin(), entries.cend());
@@ -124,11 +122,12 @@ SparseMatrix<double> VertexPositionGeometry::buildExteriorDerivative1Form() cons
     std::vector<Eigen::Triplet<double>> entries;
 
     for (Face f : mesh.faces()) {
-        double faceIdx = static_cast<double>(faceIndices[f]);
+        double faceIdx = static_cast<double>(f.getIndex());
         Halfedge he = f.halfedge();
         for (auto i = 0u; i < 3; i++) {
             double orientation = he.tailVertex() == he.edge().firstVertex() ? 1.0 : -1.0;
-            entries.push_back(Eigen::Triplet<double>(faceIdx, static_cast<double>(edgeIndices[he.edge()]), orientation));
+            entries.push_back(
+                Eigen::Triplet<double>(faceIdx, static_cast<double>(he.edge().getIndex()), orientation));
             he = he.next();
         }
     }

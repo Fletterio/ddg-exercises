@@ -253,6 +253,10 @@ int main(int argc, char** argv) {
     // Load mesh
     std::tie(mesh, geometry) = readManifoldSurfaceMesh(filepath);
 
+    geometry->requireVertexPositions();
+    geometry->requireFaceNormals();
+    geometry->requireFaceAreas();
+    geometry->requireEdgeCotanWeights();
     // Initialize polyscope
     polyscope::init();
 

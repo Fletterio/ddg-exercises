@@ -87,6 +87,7 @@ class MeanCurvatureFlowTest : public ::testing::Test {
         std::unique_ptr<ManifoldSurfaceMesh> mesh;
         std::unique_ptr<VertexPositionGeometry> geometry;
         std::tie(mesh, geometry) = makeManifoldSurfaceMeshAndGeometry(vMat, fMat);
+        geometry->requireVertexIndices();
 
         MCF = MeanCurvatureFlow(mesh.release(), geometry.release());
     }

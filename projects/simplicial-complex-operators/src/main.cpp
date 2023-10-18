@@ -182,6 +182,9 @@ int main(int argc, char** argv) {
 
     // Load mesh
     std::tie(mesh_uptr, geometry_uptr) = readManifoldSurfaceMesh(filepath);
+    if (!mesh_uptr) {
+        std::cerr << "null mesh pointer from loading\n";
+    }
     mesh = mesh_uptr.release();
     geometry = geometry_uptr.release();
 

@@ -3,6 +3,7 @@
 #include "geometrycentral/surface/manifold_surface_mesh.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 #include "mesh_subset.h"
+#include <memory>
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -15,6 +16,7 @@ class SimplicialComplexOperators {
     // Using size_t instead of int for (unsigned) adjacency matrices is probably overkill, but doesn't hurt
     SparseMatrix<size_t> A0; // vertex-edge adjacency matrix
     SparseMatrix<size_t> A1; // edge-face adjacency matrix
+    SparseMatrix<size_t> A1A0;
 
     // Constructors
     SimplicialComplexOperators(){};
@@ -23,6 +25,7 @@ class SimplicialComplexOperators {
         geometry = inputGeo;
         A0 = this->buildVertexEdgeAdjacencyMatrix();
         A1 = this->buildFaceEdgeAdjacencyMatrix();
+        A1A0 = this->buildVertexFaceAdjacencyMatrix();
     }
 
     // Initialize
@@ -31,6 +34,7 @@ class SimplicialComplexOperators {
         geometry = G;
         A0 = this->buildVertexEdgeAdjacencyMatrix();
         A1 = this->buildFaceEdgeAdjacencyMatrix();
+        A1A0 = this->buildVertexFaceAdjacencyMatrix();
     }
 
     // Destructor
@@ -43,6 +47,7 @@ class SimplicialComplexOperators {
     void assignElementIndices();
     SparseMatrix<size_t> buildVertexEdgeAdjacencyMatrix() const;
     SparseMatrix<size_t> buildFaceEdgeAdjacencyMatrix() const;
+    SparseMatrix<size_t> buildVertexFaceAdjacencyMatrix() const;
     Vector<size_t> buildVertexVector(const MeshSubset& subset) const;
     Vector<size_t> buildEdgeVector(const MeshSubset& subset) const;
     Vector<size_t> buildFaceVector(const MeshSubset& subset) const;
